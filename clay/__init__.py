@@ -42,8 +42,10 @@ class Preferences(bpy.types.AddonPreferences):
     )
 
     def draw(self, context):
-        layout = self.layout
-        layout.prop(self, "api_key")
+        self.layout.label(
+            text="""To generate an API key, go to your Clay account settings and click "API Key" on the left."""
+        )
+        self.layout.prop(self, "api_key")
 
 
 def workspace_items(self, context):
@@ -86,6 +88,7 @@ class ClayPanel(bpy.types.Panel):
 class ExportOperator(bpy.types.Operator):
     bl_idname = "clay.export"
     bl_label = "Export to Clay"
+    bl_description = "Export the scene to Clay"
 
     def execute(self, context):
         clay = context.scene.clay
@@ -149,6 +152,10 @@ def initialize_file_name(scene):
     bpy.context.scene.clay.file_name = os.path.splitext(basename)[0]
 
 
+def file_menu_item(self, context):
+    self.layout.operator("clay.export", text="Clay")
+
+
 def register():
     bpy.utils.register_class(Preferences)
     bpy.utils.register_class(SceneProperties)
@@ -158,6 +165,7 @@ def register():
     bpy.types.Scene.clay = bpy.props.PointerProperty(type=SceneProperties)
     bpy.app.handlers.load_post.append(initialize_file_name)
     bpy.app.handlers.save_post.append(initialize_file_name)
+    bpy.types.TOPBAR_MT_file_export.append(file_menu_item)
 
 
 def unregister():
@@ -169,6 +177,7 @@ def unregister():
     bpy.utils.unregister_class(SuccessDialogOperator)
     bpy.app.handlers.load_post.remove(initialize_file_name)
     bpy.app.handlers.save_post.remove(initialize_file_name)
+    bpy.types.TOPBAR_MT_file_export.remove(file_menu_item)
 
 
 if __name__ == "__main__":
