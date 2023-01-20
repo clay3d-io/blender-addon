@@ -11,6 +11,27 @@ import bpy
 import requests
 
 
+api_host = "https://api.localhost.clay3d.io"
+
+
+def api_request(method, path, api_key, files):
+    url = api_host + "/v1" + path
+    headers = {"authorization": "Bearer " + api_key}
+    r = requests.request(
+        method=method,
+        url=url,
+        verify=False,
+        headers=headers,
+        files=files,
+    )
+
+    json = r.json()
+    if 200 <= r.status_code <= 299:
+        return json
+    else:
+        raise Exception(json.get("message", ""))
+
+
 class Preferences(bpy.types.AddonPreferences):
     bl_idname = __name__
 
@@ -45,24 +66,25 @@ class ExportOperator(bpy.types.Operator):
             filepath = os.path.join(folder, file_name)
             bpy.ops.export_scene.gltf(filepath=filepath, export_format="GLB")
 
+            json = {}
             with open(filepath, mode="rb") as file:
-                url = "https://api.localhost.clay3d.io/v1/workspaces/e816747e-81ca-4788-bf92-3b9a56215c0b/files"
-                r = requests.post(
-                    url,
-                    verify=False,
-                    headers={"authorization": "Bearer " + prefs.api_key},
-                    files={file_name: file},
-                )
-
-                if r.status_code != 200:
-                    try:
-                        json = r.json()
-                        self.report({"ERROR"}, json["message"])
-                    except Exception as e:
-                        self.report({"DEBUG"}, str(e))
-                        message = "Couldn't export file to Clay. Please contact support@clay3d.io."
-                        self.report({"ERROR"}, message)
+                try:
+                    json = api_request(
+                        method="POST",
+                        path="/workspaces/e816747e-81ca-4788-bf92-3b9a56215c0b/files",
+                        api_key=prefs.api_key,
+                        files={file_name: file},
+                    )
+                except Exception as e:
+                    message = (
+                        str(e)
+                        or "Couldn't export file to Clay. Please contact support@clay3d.io."
+                    )
+                    self.report({"ERROR"}, message)
                     return {"CANCELLED"}
+
+            print("UPLOADED", json)
+
         return {"FINISHED"}
 
 
