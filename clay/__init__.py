@@ -91,7 +91,12 @@ class ExportOperator(bpy.types.Operator):
 
         with tempfile.TemporaryDirectory() as folder:
             filepath = os.path.join(folder, file_name)
-            bpy.ops.export_scene.gltf(filepath=filepath, export_format="GLB")
+            bpy.ops.export_scene.gltf(
+                filepath=filepath,
+                export_format="GLB",
+                export_draco_mesh_compression_enable=True,
+                export_draco_mesh_compression_level=6,
+            )
 
             with open(filepath, mode="rb") as file:
                 try:
