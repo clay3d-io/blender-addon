@@ -14,8 +14,8 @@ import requests
 api_host = "https://api.localhost.clay3d.io"
 
 
-def api_request(method, path, api_key, files):
-    url = api_host + "/v1" + path
+def api_request(method, path, api_key, files=None):
+    url = f"{api_host}/v1{path}"
     headers = {"authorization": "Bearer " + api_key}
     r = requests.request(
         method=method,
@@ -45,10 +45,21 @@ class Preferences(bpy.types.AddonPreferences):
         layout.prop(self, "api_key")
 
 
+def workspace_items(self, context):
+    prefs = bpy.context.preferences.addons[__name__].preferences
+    workspaces = api_request(method="GET", path="/workspaces", api_key=prefs.api_key)
+    return [(workspace["id"], workspace["name"], "") for workspace in workspaces]
+
+
 class SceneProperties(bpy.types.PropertyGroup):
     file_name: bpy.props.StringProperty(
         name="File name",
         default="",
+    )
+
+    workspace: bpy.props.EnumProperty(
+        name="Workspace",
+        items=workspace_items,
     )
 
 
@@ -71,7 +82,7 @@ class ExportOperator(bpy.types.Operator):
                 try:
                     json = api_request(
                         method="POST",
-                        path="/workspaces/e816747e-81ca-4788-bf92-3b9a56215c0b/files",
+                        path=f"/workspaces/{clay.workspace}/files",
                         api_key=prefs.api_key,
                         files={file_name: file},
                     )
@@ -98,6 +109,7 @@ class ClayPanel(bpy.types.Panel):
     file_name: bpy.props.StringProperty(name="Filename")
 
     def draw(self, context):
+        self.layout.prop(context.scene.clay, "workspace")
         self.layout.prop(context.scene.clay, "file_name")
         self.layout.operator(ExportOperator.bl_idname, text="Export to Clay")
 
