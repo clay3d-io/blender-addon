@@ -119,6 +119,15 @@ class ClayPanel(bpy.types.Panel):
     file_name: bpy.props.StringProperty(name="Filename")
 
     def draw(self, context):
+        if not context.preferences.addons[__name__].preferences.api_key:
+            text = "Enter your API key in the Clay addon preferences"
+            self.layout.label(text=text, icon="ERROR")
+            self.layout.operator(
+                OpenPreferencesOperator.bl_idname,
+                text="Open preferences",
+            )
+            return
+
         self.layout.prop(context.scene.clay, "workspace")
         self.layout.prop(context.scene.clay, "file_name")
         self.layout.operator(
@@ -126,6 +135,17 @@ class ClayPanel(bpy.types.Panel):
             text="Export to Clay",
             icon="EXPORT",
         )
+
+
+class OpenPreferencesOperator(bpy.types.Operator):
+    bl_idname = "clay.open_preferences"
+    bl_label = "Open Clay preferences"
+
+    def execute(self, context):
+        bpy.ops.screen.userpref_show()
+        bpy.context.preferences.active_section = "ADDONS"
+        bpy.data.window_managers["WinMan"].addon_search = "Clay"
+        return {"FINISHED"}
 
 
 class ExportOperator(bpy.types.Operator):
@@ -193,15 +213,16 @@ class ExportOperator(bpy.types.Operator):
                     self.report({"WARNING"}, message)
 
             try:
-                body = {
-                    "query": "mutation UpdateFile($input: UpdateFileInput!) { fileUpdate(input: $input) { id } }",
-                    "variables": {"input": {"id": file_id, "thumbnailId": image_id}},
-                }
                 api_request(
                     method="POST",
                     path="/graphql",
                     api_key=prefs.api_key,
-                    body=body,
+                    body={
+                        "query": "mutation UpdateFile($input: UpdateFileInput!) { fileUpdate(input: $input) { id } }",
+                        "variables": {
+                            "input": {"id": file_id, "thumbnailId": image_id}
+                        },
+                    },
                 )
             except Exception as e:
                 print(e)
@@ -239,29 +260,40 @@ def file_menu_item(self, context):
     self.layout.operator("clay.export", text="Clay")
 
 
+classes = (
+    Preferences,
+    SceneProperties,
+    ClayPanel,
+    ExportOperator,
+    SuccessDialogOperator,
+    OpenPreferencesOperator,
+)
+
+
 def register():
-    bpy.utils.register_class(Preferences)
-    bpy.utils.register_class(SceneProperties)
-    bpy.utils.register_class(ClayPanel)
-    bpy.utils.register_class(ExportOperator)
-    bpy.utils.register_class(SuccessDialogOperator)
+    for cls in classes:
+        bpy.utils.register_class(cls)
+
     bpy.types.Scene.clay = bpy.props.PointerProperty(type=SceneProperties)
-    bpy.app.handlers.load_post.append(initialize_file_name)
-    bpy.app.handlers.save_post.append(initialize_file_name)
+
+    if initialize_file_name not in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.append(initialize_file_name)
+
+    if initialize_file_name not in bpy.app.handlers.save_post:
+        bpy.app.handlers.save_post.append(initialize_file_name)
+
     bpy.types.TOPBAR_MT_file_export.append(file_menu_item)
 
 
 def unregister():
+    for cls in classes:
+        bpy.utils.unregister_class(cls)
+
     del bpy.types.Scene.clay
-    bpy.utils.unregister_class(ExportOperator)
-    bpy.utils.unregister_class(ClayPanel)
-    bpy.utils.unregister_class(SceneProperties)
-    bpy.utils.unregister_class(Preferences)
-    bpy.utils.unregister_class(SuccessDialogOperator)
-    bpy.app.handlers.load_post.remove(initialize_file_name)
-    bpy.app.handlers.save_post.remove(initialize_file_name)
+
+    if initialize_file_name in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.remove(initialize_file_name)
+    if initialize_file_name in bpy.app.handlers.save_post:
+        bpy.app.handlers.save_post.remove(initialize_file_name)
+
     bpy.types.TOPBAR_MT_file_export.remove(file_menu_item)
-
-
-if __name__ == "__main__":
-    register()
