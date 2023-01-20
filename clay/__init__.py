@@ -4,6 +4,7 @@ bl_info = {
     "category": "Import-Export",
 }
 
+import json
 import os
 import tempfile
 
@@ -11,12 +12,14 @@ import bpy
 import requests
 
 
-api_host = "https://api.localhost.clay3d.io"
-web_host = "https://localhost.clay3d.io"
+API_HOST = "https://api.localhost.clay3d.io"
+WEB_HOST = "https://localhost.clay3d.io"
+
+WORKSPACES_CACHE = "workspace_items"
 
 
 def api_request(method, path, api_key, files=None):
-    url = f"{api_host}/v1{path}"
+    url = f"{API_HOST}/v1{path}"
     headers = {"authorization": "Bearer " + api_key}
     r = requests.request(
         method=method,
@@ -33,13 +36,49 @@ def api_request(method, path, api_key, files=None):
         raise Exception(json.get("message", ""))
 
 
+class Cache:
+    FILE = os.path.join(
+        bpy.utils.user_resource("SCRIPTS", path="clay", create=True),
+        ".cache",
+    )
+
+    def read():
+        if not os.path.exists(Cache.FILE):
+            return {}
+
+        with open(Cache.FILE, "rb") as f:
+            data = f.read().decode("utf-8")
+            return json.loads(data)
+
+    def get(key):
+        data = Cache.read()
+        if key in data:
+            return data[key]
+
+    def set(key, value):
+        data = Cache.read()
+        data[key] = value
+        with open(Cache.FILE, "wb+") as file:
+            file.write(json.dumps(data).encode("utf-8"))
+
+    def delete(key):
+        data = Cache.read()
+        if key in data:
+            del data[key]
+
+        with open(Cache.FILE, "wb+") as f:
+            f.write(json.dumps(data).encode("utf-8"))
+
+
+def update_api_key(self, value):
+    Cache.delete(WORKSPACES_CACHE)
+    pass
+
+
 class Preferences(bpy.types.AddonPreferences):
     bl_idname = __name__
 
-    api_key: bpy.props.StringProperty(
-        name="API Key",
-        default="",
-    )
+    api_key: bpy.props.StringProperty(name="API Key", update=update_api_key)
 
     def draw(self, context):
         self.layout.label(
@@ -48,22 +87,24 @@ class Preferences(bpy.types.AddonPreferences):
         self.layout.prop(self, "api_key")
 
 
-def workspace_items(self, context):
+def fetch_workspaces(self, context):
+    items = Cache.get(WORKSPACES_CACHE)
+    if items:
+        return [tuple(item) for item in items]
+
+    print("\nFETCH WORKSPACES!!!\n")
     prefs = bpy.context.preferences.addons[__name__].preferences
     workspaces = api_request(method="GET", path="/workspaces", api_key=prefs.api_key)
-    return [(workspace["id"], workspace["name"], "") for workspace in workspaces]
+
+    items = [(workspace["id"], workspace["name"], "") for workspace in workspaces]
+    Cache.set(WORKSPACES_CACHE, items)
+
+    return items
 
 
 class SceneProperties(bpy.types.PropertyGroup):
-    file_name: bpy.props.StringProperty(
-        name="File name",
-        default="",
-    )
-
-    workspace: bpy.props.EnumProperty(
-        name="Workspace",
-        items=workspace_items,
-    )
+    file_name: bpy.props.StringProperty(name="File name")
+    workspace: bpy.props.EnumProperty(name="Workspace", items=fetch_workspaces)
 
 
 class ClayPanel(bpy.types.Panel):
@@ -140,7 +181,7 @@ class SuccessDialogOperator(bpy.types.Operator):
 
     def draw(self, context):
         op = self.layout.operator("wm.url_open", text="Open in Clay", icon="URL")
-        op.url = f"{web_host}/file/{self.file_id}"
+        op.url = f"{WEB_HOST}/file/{self.file_id}"
 
 
 @bpy.app.handlers.persistent
