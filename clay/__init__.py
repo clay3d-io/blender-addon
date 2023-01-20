@@ -18,15 +18,18 @@ WEB_HOST = "https://localhost.clay3d.io"
 WORKSPACES_CACHE = "workspace_items"
 
 
-def api_request(method, path, api_key, files=None):
-    url = f"{API_HOST}/v1{path}"
+def api_request(method, path, api_key, files=None, body=None):
+    url = f"{API_HOST}{path}"
+
     headers = {"authorization": "Bearer " + api_key}
+
     r = requests.request(
         method=method,
         url=url,
         verify=False,
         headers=headers,
         files=files,
+        json=body,
     )
 
     json = r.json()
@@ -92,9 +95,8 @@ def fetch_workspaces(self, context):
     if items:
         return [tuple(item) for item in items]
 
-    print("\nFETCH WORKSPACES!!!\n")
     prefs = bpy.context.preferences.addons[__name__].preferences
-    workspaces = api_request(method="GET", path="/workspaces", api_key=prefs.api_key)
+    workspaces = api_request(method="GET", path="/v1/workspaces", api_key=prefs.api_key)
 
     items = [(workspace["id"], workspace["name"], "") for workspace in workspaces]
     Cache.set(WORKSPACES_CACHE, items)
@@ -138,24 +140,26 @@ class ExportOperator(bpy.types.Operator):
         file_name = bpy.path.ensure_ext(clay.file_name or "Untitled", ".glb")
 
         with tempfile.TemporaryDirectory() as folder:
-            filepath = os.path.join(folder, file_name)
+            file_path = os.path.join(folder, file_name)
             bpy.ops.export_scene.gltf(
-                filepath=filepath,
+                filepath=file_path,
                 export_format="GLB",
-                export_draco_mesh_compression_enable=True,
-                export_draco_mesh_compression_level=6,
+                # export_draco_mesh_compression_enable=True,
+                # export_draco_mesh_compression_level=6,
             )
 
-            with open(filepath, mode="rb") as file:
+            file_id = ""
+            with open(file_path, mode="rb") as file:
                 try:
                     json = api_request(
                         method="POST",
-                        path=f"/workspaces/{clay.workspace}/files",
+                        path=f"/v1/workspaces/{clay.workspace}/files",
                         api_key=prefs.api_key,
                         files={file_name: file},
                     )
 
-                    bpy.ops.clay.success("INVOKE_DEFAULT", file_id=json["id"])
+                    file_id = json["id"]
+                    bpy.ops.clay.success("INVOKE_DEFAULT", file_id=file_id)
                 except Exception as e:
                     message = (
                         str(e)
@@ -163,6 +167,44 @@ class ExportOperator(bpy.types.Operator):
                     )
                     self.report({"ERROR"}, message)
                     return {"CANCELLED"}
+
+            render_path = os.path.join(folder, "render.png")
+            context.scene.render.filepath = render_path
+            context.scene.render.image_settings.file_format = "PNG"
+            context.scene.render.resolution_x = 1200
+            context.scene.render.resolution_y = 627
+            bpy.ops.render.render(
+                write_still=True,
+                use_viewport=context.scene.camera is None,
+            )
+
+            image_id = ""
+            with open(render_path, mode="rb") as render:
+                try:
+                    json = api_request(
+                        method="POST",
+                        path="/v1/images/upload",
+                        api_key=prefs.api_key,
+                        files={"render.png": render},
+                    )
+
+                    image_id = json["id"]
+                except Exception as e:
+                    self.report({"WARNING"}, message)
+
+            try:
+                body = {
+                    "query": "mutation UpdateFile($input: UpdateFileInput!) { fileUpdate(input: $input) { id } }",
+                    "variables": {"input": {"id": file_id, "thumbnailId": image_id}},
+                }
+                api_request(
+                    method="POST",
+                    path="/graphql",
+                    api_key=prefs.api_key,
+                    body=body,
+                )
+            except Exception as e:
+                print(e)
 
         return {"FINISHED"}
 
