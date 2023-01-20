@@ -76,7 +76,11 @@ class ClayPanel(bpy.types.Panel):
     def draw(self, context):
         self.layout.prop(context.scene.clay, "workspace")
         self.layout.prop(context.scene.clay, "file_name")
-        self.layout.operator(ExportOperator.bl_idname, text="Export to Clay")
+        self.layout.operator(
+            ExportOperator.bl_idname,
+            text="Export to Clay",
+            icon="EXPORT",
+        )
 
 
 class ExportOperator(bpy.types.Operator):
