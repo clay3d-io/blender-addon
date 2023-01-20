@@ -12,6 +12,7 @@ import requests
 
 
 api_host = "https://api.localhost.clay3d.io"
+web_host = "https://localhost.clay3d.io"
 
 
 def api_request(method, path, api_key, files=None):
@@ -63,6 +64,21 @@ class SceneProperties(bpy.types.PropertyGroup):
     )
 
 
+class ClayPanel(bpy.types.Panel):
+    bl_idname = "OBJECT_PT_claypanel"
+    bl_label = "Clay"
+    bl_category = "Clay"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+
+    file_name: bpy.props.StringProperty(name="Filename")
+
+    def draw(self, context):
+        self.layout.prop(context.scene.clay, "workspace")
+        self.layout.prop(context.scene.clay, "file_name")
+        self.layout.operator(ExportOperator.bl_idname, text="Export to Clay")
+
+
 class ExportOperator(bpy.types.Operator):
     bl_idname = "clay.export"
     bl_label = "Export to Clay"
@@ -77,7 +93,6 @@ class ExportOperator(bpy.types.Operator):
             filepath = os.path.join(folder, file_name)
             bpy.ops.export_scene.gltf(filepath=filepath, export_format="GLB")
 
-            json = {}
             with open(filepath, mode="rb") as file:
                 try:
                     json = api_request(
@@ -86,6 +101,8 @@ class ExportOperator(bpy.types.Operator):
                         api_key=prefs.api_key,
                         files={file_name: file},
                     )
+
+                    bpy.ops.clay.success("INVOKE_DEFAULT", file_id=json["id"])
                 except Exception as e:
                     message = (
                         str(e)
@@ -94,24 +111,24 @@ class ExportOperator(bpy.types.Operator):
                     self.report({"ERROR"}, message)
                     return {"CANCELLED"}
 
-            print("UPLOADED", json)
-
         return {"FINISHED"}
 
 
-class ClayPanel(bpy.types.Panel):
-    bl_idname = "OBJECT_PT_claypanel"
-    bl_label = "Clay"
-    bl_category = "Clay"
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
+class SuccessDialogOperator(bpy.types.Operator):
+    bl_idname = "clay.success"
+    bl_label = "Export successful!"
 
-    file_name: bpy.props.StringProperty(name="Filename")
+    file_id: bpy.props.StringProperty()
+
+    def execute(self, context):
+        return {"FINISHED"}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
 
     def draw(self, context):
-        self.layout.prop(context.scene.clay, "workspace")
-        self.layout.prop(context.scene.clay, "file_name")
-        self.layout.operator(ExportOperator.bl_idname, text="Export to Clay")
+        op = self.layout.operator("wm.url_open", text="Open in Clay", icon="URL")
+        op.url = f"{web_host}/file/{self.file_id}"
 
 
 @bpy.app.handlers.persistent
@@ -128,6 +145,7 @@ def register():
     bpy.utils.register_class(SceneProperties)
     bpy.utils.register_class(ClayPanel)
     bpy.utils.register_class(ExportOperator)
+    bpy.utils.register_class(SuccessDialogOperator)
     bpy.types.Scene.clay = bpy.props.PointerProperty(type=SceneProperties)
     bpy.app.handlers.load_post.append(initialize_file_name)
     bpy.app.handlers.save_post.append(initialize_file_name)
@@ -139,6 +157,7 @@ def unregister():
     bpy.utils.unregister_class(ClayPanel)
     bpy.utils.unregister_class(SceneProperties)
     bpy.utils.unregister_class(Preferences)
+    bpy.utils.unregister_class(SuccessDialogOperator)
     bpy.app.handlers.load_post.remove(initialize_file_name)
     bpy.app.handlers.save_post.remove(initialize_file_name)
 
