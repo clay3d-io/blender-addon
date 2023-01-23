@@ -9,34 +9,13 @@ import os
 import tempfile
 
 import bpy
-import requests
+
+from .api import request, graphql
 
 
-API_HOST = "https://api.localhost.clay3d.io"
 WEB_HOST = "https://localhost.clay3d.io"
 
 WORKSPACES_CACHE = "workspace_items"
-
-
-def api_request(method, path, api_key, files=None, body=None):
-    url = f"{API_HOST}{path}"
-
-    headers = {"authorization": "Bearer " + api_key}
-
-    r = requests.request(
-        method=method,
-        url=url,
-        verify=False,
-        headers=headers,
-        files=files,
-        json=body,
-    )
-
-    json = r.json()
-    if 200 <= r.status_code <= 299:
-        return json
-    else:
-        raise Exception(json.get("message", ""))
 
 
 class Cache:
@@ -96,9 +75,24 @@ def fetch_workspaces(self, context):
         return [tuple(item) for item in items]
 
     prefs = bpy.context.preferences.addons[__name__].preferences
-    workspaces = api_request(method="GET", path="/v1/workspaces", api_key=prefs.api_key)
+    response = graphql(
+        api_key=prefs.api_key,
+        query="""\
+        query GetWorkspaces {
+            me {
+                workspaces {
+                    id
+                    name
+                }
+            }
+        }
+        """,
+    )
 
-    items = [(workspace["id"], workspace["name"], "") for workspace in workspaces]
+    items = [
+        (workspace["id"], workspace["name"], "")
+        for workspace in response["data"]["me"]["workspaces"]
+    ]
     Cache.set(WORKSPACES_CACHE, items)
 
     return items
@@ -171,10 +165,10 @@ class ExportOperator(bpy.types.Operator):
             file_id = ""
             with open(file_path, mode="rb") as file:
                 try:
-                    json = api_request(
+                    json = request(
+                        api_key=prefs.api_key,
                         method="POST",
                         path=f"/v1/workspaces/{clay.workspace}/files",
-                        api_key=prefs.api_key,
                         files={file_name: file},
                     )
 
@@ -201,10 +195,10 @@ class ExportOperator(bpy.types.Operator):
             image_id = ""
             with open(render_path, mode="rb") as render:
                 try:
-                    json = api_request(
+                    json = request(
+                        api_key=prefs.api_key,
                         method="POST",
                         path="/v1/images/upload",
-                        api_key=prefs.api_key,
                         files={"render.png": render},
                     )
 
@@ -213,16 +207,16 @@ class ExportOperator(bpy.types.Operator):
                     self.report({"WARNING"}, message)
 
             try:
-                api_request(
-                    method="POST",
-                    path="/graphql",
+                graphql(
                     api_key=prefs.api_key,
-                    body={
-                        "query": "mutation UpdateFile($input: UpdateFileInput!) { fileUpdate(input: $input) { id } }",
-                        "variables": {
-                            "input": {"id": file_id, "thumbnailId": image_id}
-                        },
-                    },
+                    query="""\
+                    mutation UpdateFile($input: UpdateFileInput!) {
+                        fileUpdate(input: $input) {
+                            id
+                        }
+                    }
+                    """,
+                    variables={"input": {"id": file_id, "thumbnailId": image_id}},
                 )
             except Exception as e:
                 print(e)
