@@ -116,8 +116,6 @@ class ClayPanel(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
 
-    file_name: bpy.props.StringProperty(name="Filename")
-
     def draw(self, context):
         if not context.preferences.addons[__name__].preferences.api_key:
             text = "Enter your API key in the Clay addon preferences"
@@ -140,6 +138,7 @@ class ClayPanel(bpy.types.Panel):
 class OpenPreferencesOperator(bpy.types.Operator):
     bl_idname = "clay.open_preferences"
     bl_label = "Open Clay preferences"
+    bl_options = {"INTERNAL"}
 
     def execute(self, context):
         bpy.ops.screen.userpref_show()
@@ -152,6 +151,7 @@ class ExportOperator(bpy.types.Operator):
     bl_idname = "clay.export"
     bl_label = "Export to Clay"
     bl_description = "Export the scene to Clay"
+    bl_options = {"INTERNAL"}
 
     def execute(self, context):
         clay = context.scene.clay
@@ -233,6 +233,7 @@ class ExportOperator(bpy.types.Operator):
 class SuccessDialogOperator(bpy.types.Operator):
     bl_idname = "clay.success"
     bl_label = "Export successful!"
+    bl_options = {"INTERNAL"}
 
     file_id: bpy.props.StringProperty()
 
@@ -257,7 +258,7 @@ def initialize_file_name(scene):
 
 
 def file_menu_item(self, context):
-    self.layout.operator("clay.export", text="Clay")
+    self.layout.operator(ExportOperator.bl_idname, text="Clay")
 
 
 classes = (
@@ -278,7 +279,6 @@ def register():
 
     if initialize_file_name not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(initialize_file_name)
-
     if initialize_file_name not in bpy.app.handlers.save_post:
         bpy.app.handlers.save_post.append(initialize_file_name)
 
