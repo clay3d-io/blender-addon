@@ -1,6 +1,8 @@
 bl_info = {
     "name": "Clay",
     "blender": (2, 80, 0),
+    "version": (0, 1, 0),
+    "location": "View3D > Tools > Clay",
     "category": "Import-Export",
 }
 
@@ -13,8 +15,12 @@ import bpy
 from .api import request, graphql
 
 
-WEB_HOST = "https://localhost.clay3d.io"
+VERSION = ".".join(str(point) for point in bl_info["version"])
 
+
+WEB_HOST = "https://localhost.clay3d.io"
+# GITHUB_REPO = "https://api.github.com/repos/clay3d-io/blender-addon"
+GITHUB_REPO = "https://api.github.com/repos/sketchfab/blender-plugin"
 WORKSPACES_CACHE = "workspace_items"
 
 
