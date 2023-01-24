@@ -153,6 +153,11 @@ class ExportOperator(bpy.types.Operator):
     bl_description = "Export the scene to Clay"
     bl_options = {"INTERNAL"}
 
+    @classmethod
+    def poll(cls, context):
+        prefs = context.preferences.addons[__name__].preferences
+        return prefs.api_key
+
     def execute(self, context):
         clay = context.scene.clay
         prefs = context.preferences.addons[__name__].preferences
