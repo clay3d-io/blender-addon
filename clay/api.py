@@ -3,7 +3,7 @@ import textwrap
 import requests
 
 
-API_HOST = "https://api.localhost.clay3d.io"
+API_HOST = "https://api.clay3d.io"
 
 
 def request(api_key, method, path, files=None, body=None):
