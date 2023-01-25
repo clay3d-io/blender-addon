@@ -14,7 +14,7 @@ Export models from Blender directly into Clay!
 
 ![Blender Preferences](./public/how-to-install-1.png)
 
-5. Type in `Clay` into the search bar and you should see an option that says `Import-Export: Clay`. Click the checkbox next to that option to enable to the Clay Addon. You should now see the Clay Addon in the right sidebar.
+5. Type in `Clay` into the search bar and you should see an option that says `Import-Export: Clay`. Click the checkbox next to that option to enable to the Clay Addon. You should now see the Clay Addon on the right side of the 3D Viewport in the toolbar.
 
 ![Blender Preferences](./public/how-to-install-2.png)
 
@@ -28,8 +28,8 @@ Export models from Blender directly into Clay!
 
 ![Blender Preferences](./public/how-to-use-2.png)
 
-3. From the account settings of your Clay account, you will find this page. You can either generate the API Key for the first time, or regenerate any subsequent time. This page can be found at this url:
-   `https://www.clay3d.io/`WorkspaceSlug`/settings/api`
+3. From you Clay account settings, go to the `API Key` tab under `Account`. You can either generate the API Key for the first time, or regenerate any subsequent time. This page can also be found at this url:
+   [https://www.clay3d.io/settings/api](https://www.clay3d.io/settings/api)
 
 ![Clay API Key Generation](./public/how-to-use-3.png)
 
@@ -37,6 +37,6 @@ Export models from Blender directly into Clay!
 
 ![Clay Addon Ui](./public/how-to-use-4.png)
 
-5. Exporting to clay may take some time, but once it is complete, you will see this popup. You can now click `Open in Clay`!
+5. Exporting to Clay may take some time, but once it is complete, you will see this popup. You can now click `Open in Clay`!
 
 ![Export Successful UI](./public/how-to-use-5.png)
