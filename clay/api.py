@@ -14,7 +14,6 @@ def request(api_key, method, path, files=None, body=None):
     r = requests.request(
         method=method,
         url=url,
-        verify=False,
         headers=headers,
         files=files,
         json=body,
