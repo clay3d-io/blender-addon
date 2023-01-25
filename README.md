@@ -4,7 +4,7 @@ Export models from Blender directly into Clay!
 
 # How to install
 
-1. Download the Clay Blender Addon as a zip file.
+1. Download the Clay Blender Addon zip file attached to the [latest release](https://github.com/clay3d-io/blender-addon/releases/latest).
 
 2. Open Blender, and navigate to `Edit > Preferences`.
 
