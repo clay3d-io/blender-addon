@@ -9,7 +9,10 @@ API_HOST = "https://api.clay3d.io"
 def request(api_key, method, path, files=None, body=None):
     url = f"{API_HOST}{path}"
 
-    headers = {"authorization": "Bearer " + api_key}
+    headers = {
+        "authorization": "Bearer " + api_key,
+        "x-requested-with": f"Clay Blender Addon 1.0.0",
+    }
 
     r = requests.request(
         method=method,

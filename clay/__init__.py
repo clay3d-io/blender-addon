@@ -15,9 +15,6 @@ import bpy
 from .api import request, graphql
 
 
-VERSION = ".".join(str(point) for point in bl_info["version"])
-
-
 WEB_HOST = "https://clay3d.io"
 WORKSPACES_CACHE = "workspace_items"
 
